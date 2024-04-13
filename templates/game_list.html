@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Your Chess Games</title>
+    <!-- Add necessary CSS links for styling (e.g., Bootstrap) -->
+</head>
+<body>
+    <div class="container">
+        <h1>Your Games</h1>
+
+        <ul class="list-group">
+            {% for game in games %}
+                <li class="list-group-item">
+                    <a href="{{ url_for('load_game', game_id=game.id) }}">
+                        Game {{ loop.index }}
+                        {% if game.date %}
+                            ({{ game.date }})
+                        {% endif %}
+                        {% if game.opponent %}
+                            - vs. {{ game.opponent }}
+                        {% endif %}
+                    </a>
+                </li>
+            {% endfor %}
+        </ul>
+
+        <!-- Add any other elements you want on the page (e.g., navigation) -->
+    </div>
+
+    <!-- Add necessary JavaScript links (e.g., for Bootstrap) -->
+</body>
+</html>

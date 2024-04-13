@@ -2,9 +2,9 @@ import secrets
 
 from flask import Flask, render_template, redirect, url_for, request, session, jsonify
 from flask_sqlalchemy import SQLAlchemy
-
+import os
 app = Flask(__name__)
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:////PYTHON/flaskProjectCHESS/database.db'
+app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:////{os.path.abspath(os.getcwd()).replace("\\", "/")[3:]}/database.db'
 app.config['SQLALCHEMY_ECHO'] = True
 app.secret_key = secrets.token_urlsafe(32)
 db = SQLAlchemy(app)

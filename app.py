@@ -1,8 +1,9 @@
+import os
 import secrets
 
 from flask import Flask, render_template, redirect, url_for, request, session, jsonify
 from flask_sqlalchemy import SQLAlchemy
-import os
+
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:////{os.path.abspath(os.getcwd()).replace("\\", "/")[3:]}/database.db'
 app.config['SQLALCHEMY_ECHO'] = True
@@ -55,6 +56,7 @@ def login():
         if login is not None:
             session['logged_in'] = True
             session['username'] = uname
+            session['user_id'] = login.id
             # Handle "Remember Me" (not implemented for security reasons)
             # ...
             return redirect(url_for("profile"))  # Redirect to profile
@@ -136,4 +138,3 @@ if __name__ == "__main__":
     with app.app_context():
         db.create_all()
     app.run(debug=True)
-

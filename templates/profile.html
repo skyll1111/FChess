@@ -4,11 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Profile</title>
-    <!-- Add your CSS links here -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
 <body>
-    <h1>Welcome, {{ username }}!</h1>
-    <!-- Add more content for the personal page -->
-    <p>This is your personal page. You can view your game history, statistics, etc. here.</p>
+{% include 'header.html' %}
+<h1>Welcome, {{ username }}!</h1>
+<!-- Add more content for the personal page -->
+<p>This is your personal page. You can view your game history, statistics, etc. here.</p>
 </body>
 </html>

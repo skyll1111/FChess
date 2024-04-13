@@ -3,6 +3,7 @@
 <head>
     <title>Chess Board</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/chessboard-1.0.0.min.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     <script src="https://code.jquery.com/jquery-3.5.1.min.js"
             integrity="sha384-ZvpUoO/+PpLXR1lu4jmpXWu80pZlYUAfxl5NsBMWOEPSjUn/6Z/hRTt8+pR6L4N2"
             crossorigin="anonymous"></script>
@@ -10,20 +11,24 @@
         #container {
             display: flex;
         }
+
         #board-container {
             margin-right: 20px; /* Adjust margin between board and panel */
         }
+
         #left-panel {
             width: 200px;
             padding: 10px;
             box-sizing: border-box;
         }
+
         #board {
             width: 400px; /* Adjust chessboard width as needed */
         }
     </style>
 </head>
 <body>
+{% include 'header.html' %}
 <div id="container">
     <div id="board-container">
         <div id="board"></div>

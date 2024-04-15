@@ -91,20 +91,59 @@ a:hover {
     border-radius: 10px;
     list-style-type: none;
     margin-left: -30px;
+     max-width: 550px;
 }
 table {
     border-collapse: collapse;
     width: 100%;
     table-layout: fixed;
-    s
+    border: none;
 }
 
 th, td {
-    border: 1px solid black;
+    border: none;
     padding: 5px;
     text-align: center;
 }
 
 td:hover {
     background-color: #dddddd;
+}
+
+.list-group-item {
+    /* Existing styles for list-group-item */
+    align-items: flex-start; /* Ensure items are aligned to the top */
+
+}
+
+.pgn-table {
+    max-height: 145px; /* Set the maximum height as needed */
+    overflow-y: auto;  /* Enable vertical scrolling */
+    margin-top: -20px;
+}
+::-webkit-scrollbar {
+    width: 0;
+    background: transparent; /* make scrollbar transparent */
+}
+
+.top-gradient, .bottom-gradient {
+    position: relative;
+    left: 0;
+    right: 0;
+}
+
+.top-gradient {
+    /*bottom: -50px;*/
+    background: linear-gradient(to top, rgba(255, 255, 255, 0) 0%, rgba(255, 255, 255, 1) 70%);
+    height: 20px;
+}
+
+.bottom-gradient {
+    top: -50px;
+    background: linear-gradient(to bottom, rgba(255, 255, 255, 0) 0%, rgba(255, 255, 255, 1) 70%);
+    height: 50px;
+}
+
+.pgn-column {
+    margin-bottom: -55px;
 }

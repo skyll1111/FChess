@@ -60,6 +60,11 @@
                 // Get moves and create table rows
                 var moves = _game.history();
                 var table = document.getElementById('pgn-table-{{ game.id }}');
+                var row = table.insertRow();
+                var whiteCell = row.insertCell();
+                var blackCell = row.insertCell();
+                whiteCell.innerHTML = "   ";
+                blackCell.innerHTML = "   ";
                 for (var i = 0; i < moves.length; i += 2) {
                     var row = table.insertRow();
                     var whiteCell = row.insertCell();
@@ -69,6 +74,11 @@
                         blackCell.innerHTML = moves[i + 1];
                     }
                 }
+                var row = table.insertRow();
+                var whiteCell = row.insertCell();
+                var blackCell = row.insertCell();
+                whiteCell.innerHTML = "   ";
+                blackCell.innerHTML = "   ";
             </script>
         {% endfor %}
     </ul>

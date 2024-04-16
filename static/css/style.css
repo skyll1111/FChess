@@ -144,6 +144,8 @@ th, td {
 ::-webkit-scrollbar-thumb:hover {
     background-color: #dddddd;
     border-radius: 10px;
+    position: static !important;
+    z-index: 999999 !important;
 }
 
 .top-gradient, .bottom-gradient {
@@ -156,12 +158,14 @@ th, td {
     /*bottom: -50px;*/
     background: linear-gradient(to top, rgba(255, 255, 255, 0) 0%, rgba(255, 255, 255, 1) 70%);
     height: 30px;
+    margin-right: 15px;
 }
 
 .bottom-gradient {
     top: -30px;
     background: linear-gradient(to bottom, rgba(255, 255, 255, 0) 0%, rgba(255, 255, 255, 1) 70%);
     height: 30px;
+    margin-right: 15px;
 }
 
 .pgn-column {

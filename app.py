@@ -2,7 +2,6 @@ import os
 import secrets
 
 import chess
-
 from flask import Flask, render_template, redirect, url_for, request, session, jsonify
 from flask_socketio import SocketIO, emit, join_room, leave_room
 from flask_sqlalchemy import SQLAlchemy
@@ -30,6 +29,7 @@ class chess_games(db.Model):
 
 
 from datetime import datetime
+
 
 class GameSession(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -154,9 +154,11 @@ games = {}
 @app.route('/multiplayer/<int:game_id>')
 def multiplayer(game_id):
     game = GameSession.query.get(game_id)
-    if not game or (game.white_player_id and game.black_player_id and session['user_id'] not in [game.white_player_id, game.black_player_id]):
+    if not game or (game.white_player_id and game.black_player_id and session['user_id'] not in [game.white_player_id,
+                                                                                                 game.black_player_id]):
         return redirect(url_for('index'))  # Redirect to main if no game or room is full
     return render_template('multiplayer.html', game_id=game_id)
+
 
 @socketio.on('join')
 def on_join(data):
@@ -209,6 +211,7 @@ def on_leave():
     leave_room(room)
     emit('status', {'msg': username + ' has left the room.'}, room=room)
 
+
 @app.route('/create_game', methods=['POST'])
 def create_game():
     user_id = request.json.get('user_id')
@@ -255,3 +258,4 @@ if __name__ == "__main__":
     with app.app_context():
         db.create_all()
     socketio.run(app, debug=True)
+    pass

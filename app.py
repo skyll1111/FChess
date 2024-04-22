@@ -174,6 +174,7 @@ def on_move(data):
     print("!!!!!!!!!!!!", data)
     game_id = data['room']
     uci_move = data['move']
+    print("||||||||||", data["_fen"])
 
     game = GameSession.query.get(game_id)
     print("!!!!!!!!!!!!!", game)

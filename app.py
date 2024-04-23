@@ -2,6 +2,7 @@ import os
 import secrets
 
 import chess
+
 from flask import Flask, render_template, redirect, url_for, request, session, jsonify
 from flask_socketio import SocketIO, emit, join_room, leave_room
 from flask_sqlalchemy import SQLAlchemy
@@ -26,6 +27,17 @@ class chess_games(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
     pgn = db.Column(db.String)  # Store the PGN data of the game
+
+
+from datetime import datetime
+
+class GameSession(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    white_player_id = db.Column(db.Integer, nullable=True)
+    black_player_id = db.Column(db.Integer, nullable=True)
+    fen = db.Column(db.String, default="startpos")  # Starting position in FEN
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
 
 @app.route("/game")
 def game():
@@ -136,8 +148,109 @@ def load_game(game_id):
         return redirect(url_for('login'))
 
 
+games = {}
+
+
+@app.route('/multiplayer/<int:game_id>')
+def multiplayer(game_id):
+    game = GameSession.query.get(game_id)
+    if not game or (game.white_player_id and game.black_player_id and session['user_id'] not in [game.white_player_id, game.black_player_id]):
+        return redirect(url_for('index'))  # Redirect to main if no game or room is full
+    return render_template('multiplayer.html', game_id=game_id)
+
+@socketio.on('join')
+def on_join(data):
+    game_id = data['game_id']
+    game = GameSession.query.get(game_id)
+
+    if not game:
+        return  # Handle error, game does not exist
+    join_room(str(game_id))
+    emit('game_status', {'fen': game.fen}, room=str(game_id))
+
+
+@socketio.on('move')
+def on_move(data):
+    print("!!!!!!!!!!!!", data)
+    game_id = data['room']
+    uci_move = data['move']
+
+    game = GameSession.query.get(game_id)
+    print("!!!!!!!!!!!!!", game)
+    game.fen = data["_fen"]
+
+    if game:
+        board = chess.Board(game.fen)  # Initialize the board with the current FEN
+        print(board.fen())
+
+        try:
+            move = chess.Move.from_uci(uci_move)  # Convert UCI move to a chess.Move
+            print(move)
+            # if move in board.legal_moves:  # Check if the move is legal
+            # board.push(move)  # Make the move on the board
+            game.fen = board.fen()  # Update the game's FEN with the new board state
+            db.session.commit()  # Save the updated game state to the database
+            print("&&&&")
+
+            emit('move', {'move': uci_move, 'fen': game.fen}, room=str(game_id))
+            # else:
+            #     emit('move_error', {'error': 'Illegal move'}, room=str(game_id))
+        except ValueError:
+            emit('move_error', {'error': 'Invalid move format'}, room=str(game_id))
+    else:
+        emit('move_error', {'error': 'Game not found'}, room=str(game_id))
+
+
+@socketio.on('leave')
+def on_leave():
+    room = session.get('room')
+    username = session.get('username')
+    leave_room(room)
+    emit('status', {'msg': username + ' has left the room.'}, room=room)
+
+@app.route('/create_game', methods=['POST'])
+def create_game():
+    user_id = request.json.get('user_id')
+    color = request.json.get('color', 'white')  # Default to white if not specified
+
+    new_game = GameSession(
+        white_player_id=user_id if color == 'white' else None,
+        black_player_id=user_id if color == 'black' else None
+    )
+    db.session.add(new_game)
+    db.session.commit()
+
+    return jsonify({
+        'game_id': new_game.id,
+        'message': f'New game created with ID {new_game.id}, player as {color}'
+    }), 201
+
+
+@app.route('/join_game', methods=['POST'])
+def join_game():
+    user_id = request.json.get('user_id')
+    game_id = request.json.get('game_id')
+
+    game = GameSession.query.get(game_id)
+    if not game:
+        return jsonify({'error': 'Game not found'}), 404
+
+    # Assign player to game if there's a spot
+    if game.white_player_id is None:
+        game.white_player_id = user_id
+    elif game.black_player_id is None:
+        game.black_player_id = user_id
+    else:
+        return jsonify({'error': 'Game is full'}), 400
+
+    db.session.commit()
+    return jsonify({
+        'game_id': game_id,
+        'message': 'Joined game successfully'
+    }), 200
+
+
 if __name__ == "__main__":
     with app.app_context():
         db.create_all()
     socketio.run(app, debug=True)
-    pass

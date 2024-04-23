@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Chess Game Room</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+{% include 'header.html' %}
+<div class="container">
+    <h1>Chess Game Rooms</h1>
+    <button id="createRoom">Create New Room</button>
+    <div id="roomList"></div>
+    <div id="gameBoard" style="display:none;">
+        <div id="board" style="width: 400px;"></div>
+        <p>Status: <span id="status"></span></p>
+    </div>
+</div>
+
+<script src="{{ url_for('static', filename='js/script.js') }}"></script>
+<script src="{{ url_for('static', filename='js/room_script.js') }}"></script>
+</body>
+</html>
+

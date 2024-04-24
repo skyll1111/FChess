@@ -10,7 +10,9 @@ STOCKFISH_PATH = "C:/PYTHON/flaskProjectCHESS/stockfish_ex/stockfish-windows-x86
 
 app = Flask(__name__)
 socketio = SocketIO(app)
-app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:////{os.path.abspath(os.getcwd()).replace("\\", "/")[3:]}/database.db'
+app.config['SQLALCHEMY_DATABASE_URI'] = (f'sqlite:////'
+                                         f'{os.path.abspath(os.getcwd()).replace("\\", "/")[3:]}/'
+                                         f'database.db')
 # app.config['SQLALCHEMY_ECHO'] = True
 app.secret_key = secrets.token_urlsafe(32)
 db = SQLAlchemy(app)
@@ -223,8 +225,8 @@ def room(room_id):
     waiting_for_player = False
     if not game_room.player_two_id and game_room.player_one_id != user_id:
         waiting_for_player = True
-    return render_template('room.html', room_id=room_id, fen=fen, user_id=user_id, user_color=player_color,
-                           waiting_for_player=waiting_for_player)
+    return render_template('room.html', room_id=room_id, fen=fen, user_id=user_id,
+                           user_color=player_color, waiting_for_player=waiting_for_player)
 
 
 @socketio.on('join')

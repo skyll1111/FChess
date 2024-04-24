@@ -2,10 +2,10 @@ import os
 import secrets
 
 import chess.engine
-from flask import Flask, render_template, redirect, url_for, request, session, jsonify
+from flask import Flask, render_template, redirect, url_for, request, session, jsonify, flash
+from flask_cors import CORS
 from flask_socketio import SocketIO, emit, join_room
 from flask_sqlalchemy import SQLAlchemy
-from flask_cors import CORS
 
 STOCKFISH_PATH = "C:/PYTHON/flaskProjectCHESS/stockfish_ex/stockfish-windows-x86-64-avx2.exe"
 
@@ -18,6 +18,7 @@ app.config['SQLALCHEMY_DATABASE_URI'] = (f'sqlite:////'
 app.secret_key = secrets.token_urlsafe(32)
 db = SQLAlchemy(app)
 CORS(app)
+
 
 def get_stockfish_analysis(fen, level, query_type):
     engine = chess.engine.SimpleEngine.popen_uci(STOCKFISH_PATH)
@@ -275,6 +276,28 @@ def stockfish_api():
     result = get_stockfish_analysis(fen, level, query_type)
     print(result)
     return jsonify({query_type: result})
+
+
+@app.route('/join_room', methods=['POST'])
+def join_room():
+    room_id = request.form.get('room_id')
+    if not room_id:
+        flash('No room ID provided!', 'error')
+        return redirect(url_for('index'))
+
+    # Here you would typically check if the room exists and if the user can join
+    return redirect(url_for('room', room_id=room_id))  # Assume you have a view function to show the room
+
+
+@app.route('/online_games')
+def online_games():
+    user_id = session.get('user_id')
+    if not user_id:
+        return redirect(url_for('login'))  # Перенаправить на страницу входа, если пользователь не авторизован
+
+    # Получаем все игры, где пользователь участвует
+    games = GameRoom.query.filter((GameRoom.player_one_id == user_id) | (GameRoom.player_two_id == user_id)).all()
+    return render_template('online_games.html', games=games)
 
 
 if __name__ == "__main__":

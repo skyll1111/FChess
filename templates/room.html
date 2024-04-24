@@ -17,24 +17,21 @@
 <script>
     var socket = io();
     var board = null;
-    var game = new Chess("{{ fen }}");
-    var room_id = "{{ room_id }}";
-    console.log("{{ fen }}")
-    console.log(game.fen())
+    var game = new Chess('{{ fen }}');
+    var room_id = '{{ room_id }}';
+    var user_id = '{{ user_id }}'; // Assume Flask template renders this
 
-    // Configure the chessboard
     var config = {
         draggable: true,
-        position: "{{ fen }}",  // Use FEN from server
+        position: '{{ fen }}',
         onDrop: handleMove,
         onSnapEnd: function () {
             board.position(game.fen());
         }
-    }
+    };
     board = Chessboard('board', config);
 
-    // Handle move validation and emit move to server
-     function handleMove(source, target, piece, newPos, oldPos, orientation) {
+    function handleMove(source, target, piece, newPos, oldPos, orientation) {
         var move = game.move({
             from: source,
             to: target,
@@ -44,15 +41,13 @@
         socket.emit('move', {move: move, room: room_id, fen: game.fen()});
     }
 
-    // Listen for moves made by the opponent
     socket.on('move', function(data) {
         game.move(data.move);
         board.position(game.fen());
     });
 
-    // Join the room
-    socket.emit('join', room_id);
-
+    socket.emit('join', {room: room_id, user_id: user_id});
 </script>
+
 </body>
 </html>

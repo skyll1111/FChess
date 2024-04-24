@@ -1,10 +1,8 @@
 import os
 import secrets
-import uuid
 
-import chess
 from flask import Flask, render_template, redirect, url_for, request, session, jsonify
-from flask_socketio import SocketIO, emit, join_room, leave_room
+from flask_socketio import SocketIO, emit, join_room
 from flask_sqlalchemy import SQLAlchemy
 
 app = Flask(__name__)
@@ -27,13 +25,19 @@ class chess_games(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
     pgn = db.Column(db.String)  # Store the PGN data of the game
+
+
 class GameRoom(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     room_id = db.Column(db.String(80), unique=True, nullable=False)
     fen = db.Column(db.String(255), nullable=False)
+    player_one_id = db.Column(db.String(80), nullable=True)
+    player_two_id = db.Column(db.String(80), nullable=True)
 
     def __repr__(self):
         return '<GameRoom %r>' % self.room_id
+
+
 @app.route("/game")
 def game():
     # Clear game_id from session to ensure a new game is created
@@ -141,26 +145,64 @@ def load_game(game_id):
         return render_template('game.html', pgn=game.pgn)
     else:
         return redirect(url_for('login'))
-@app.route('/create_room')
+
+
+import uuid
+
+
+@app.route('/create_room', methods=['GET'])
 def create_room():
+    user_id = session.get('user_id')  # Ensure you have user authentication set up
+    if not user_id:
+        return redirect(url_for('login'))  # Redirect to login if not authenticated
+
     # Generate a unique room ID
     room_id = str(uuid.uuid4())
-    # Redirect to the room page or return the room ID
+    new_room = GameRoom(room_id=room_id, fen='rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1',
+                        player_one_id=user_id)
+
+    db.session.add(new_room)
+    db.session.commit()
+    # Redirect user to the new room
     return redirect(url_for('room', room_id=room_id))
+
 
 @app.route('/room/<room_id>')
 def room(room_id):
+    user_id = session.get('user_id')
     game_room = GameRoom.query.filter_by(room_id=room_id).first()
-    fen = game_room.fen if game_room else 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1'
-    print(fen)
-    return render_template('room.html', room_id=room_id, fen=fen)
+
+    if not game_room:
+        return redirect(url_for('index'))  # Redirect if room does not exist
+
+    # Check if the room is already full and if the user is one of the participants
+    if (game_room.player_one_id and game_room.player_two_id and
+            str(user_id) not in [game_room.player_one_id, game_room.player_two_id]):
+        print("empty&?????")
+        return redirect(url_for('index'))  # Room is full and user is not a participant
+
+    print(user_id, [game_room.player_one_id, game_room.player_two_id])
+    if str(user_id) in [game_room.player_one_id, game_room.player_two_id]:
+        print("HUUUUUH")
+    elif not game_room.player_one_id:
+        game_room.player_one_id = user_id
+    elif not game_room.player_two_id and user_id != game_room.player_one_id:
+        game_room.player_two_id = user_id
+
+    db.session.commit()
+
+    fen = game_room.fen if game_room else 'start'
+    return render_template('room.html', room_id=room_id, fen=fen, user_id=user_id)
+
 
 @socketio.on('join')
 def on_join(data):
     print(data)
-    room = data
+    room = data["room"]
+    print(data)
     join_room(room)
     emit('joined_room', {'room': room}, to=room)
+
 
 @socketio.on('move')
 def on_move(data):
@@ -174,7 +216,6 @@ def on_move(data):
         db.session.add(game_room)
     db.session.commit()
     emit('move', data, to=room, include_self=False)
-
 
 
 if __name__ == "__main__":

@@ -151,7 +151,7 @@ def create_room():
 @app.route('/room/<room_id>')
 def room(room_id):
     game_room = GameRoom.query.filter_by(room_id=room_id).first()
-    fen = game_room.fen if game_room else 'start'
+    fen = game_room.fen if game_room else 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1'
     print(fen)
     return render_template('room.html', room_id=room_id, fen=fen)
 

@@ -19,11 +19,13 @@
     var board = null;
     var game = new Chess("{{ fen }}");
     var room_id = "{{ room_id }}";
+    console.log("{{ fen }}")
+    console.log(game.fen())
 
     // Configure the chessboard
     var config = {
         draggable: true,
-        position: game.fen(),  // Use FEN from server
+        position: "{{ fen }}",  // Use FEN from server
         onDrop: handleMove,
         onSnapEnd: function () {
             board.position(game.fen());

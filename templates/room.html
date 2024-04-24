@@ -11,7 +11,14 @@
 </head>
 <body>
 {% include 'header.html' %}
-<div id="board" style="width: 400px;"></div>
+{% if waiting_for_player %}
+    <div id="waiting-message">
+        Waiting for another player to join...
+    </div>
+    <div hidden="hidden" id="board" style="width: 400px; pointer-events: none;"></div>
+{% else %}
+    <div id="board" style="width: 400px;"></div>
+{% endif %}
 <script src="{{ url_for('static', filename='js/chessboard-1.0.0.min.js') }}"></script>
 <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.11.0/chess.js"></script>
 <script>
@@ -21,7 +28,7 @@
     var room_id = '{{ room_id }}';
     var user_id = '{{ user_id }}'; // Assume Flask template renders this
     var user_color = '{{ user_color }}'
-
+    var waiting_for_player = {{ waiting_for_player | tojson }};
     var config = {
         draggable: true,
         position: '{{ fen }}',
@@ -32,6 +39,7 @@
         onDragStart: onDragStart
     };
     board = Chessboard('board', config);
+
     function onDragStart(source, piece, position, orientation) {
         // Check if it's the right color's turn
         if ((game.turn() === 'w' && piece.search(/^b/) !== -1) ||
@@ -40,6 +48,7 @@
             return false;  // Cancel the drag if it's not this user's turn
         }
     }
+
     function handleMove(source, target, piece, newPos, oldPos, orientation) {
         var move = game.move({
             from: source,
@@ -50,9 +59,21 @@
         socket.emit('move', {move: move, room: room_id, fen: game.fen()});
     }
 
-    socket.on('move', function(data) {
+    socket.on('move', function (data) {
         game.move(data.move);
         board.position(game.fen());
+    });
+    socket.on('player_joined', function (data) {
+        if (data.start_game) {
+            document.getElementById("waiting-message").style.display = "none";
+            document.getElementById("board").style.display = "block";
+        }
+    });
+
+    socket.on('waiting_for_player', function (data) {
+        if (data.waiting) {
+            document.getElementById("waiting-message").style.display = "block";
+        }
     });
 
     socket.emit('join', {room: room_id, user_id: user_id});

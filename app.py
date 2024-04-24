@@ -192,16 +192,30 @@ def room(room_id):
     db.session.commit()
     player_color = "white" if str(user_id) in game_room.player_one_id else "black"
     fen = game_room.fen if game_room else 'start'
-    return render_template('room.html', room_id=room_id, fen=fen, user_id=user_id, user_color=player_color)
+    waiting_for_player = False
+    if not game_room.player_two_id and game_room.player_one_id != user_id:
+        waiting_for_player = True
+    return render_template('room.html', room_id=room_id, fen=fen, user_id=user_id, user_color=player_color,
+                           waiting_for_player=waiting_for_player)
 
 
 @socketio.on('join')
 def on_join(data):
-    print(data)
-    room = data["room"]
-    print(data)
+    room = data['room']
+    user_id = data['user_id']
     join_room(room)
-    emit('joined_room', {'room': room}, to=room)
+    game_room = GameRoom.query.filter_by(room_id=room).first()
+
+    if game_room.player_one_id and game_room.player_two_id:
+        emit('player_joined', {'start_game': True}, room=room)
+    else:
+        if not game_room.player_two_id and game_room.player_one_id != user_id:
+            game_room.player_two_id = user_id
+            db.session.commit()
+            emit('player_joined', {'start_game': True}, room=room)
+        else:
+            emit('waiting_for_player', {'waiting': True}, room=room)
+
 
 
 @socketio.on('move')

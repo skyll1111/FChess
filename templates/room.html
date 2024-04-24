@@ -11,13 +11,11 @@
 </head>
 <body>
 {% include 'header.html' %}
+<div id="board" style="width: 400px;"></div>
 {% if waiting_for_player %}
     <div id="waiting-message">
         Waiting for another player to join...
     </div>
-    <div hidden="hidden" id="board" style="width: 400px; pointer-events: none;"></div>
-{% else %}
-    <div id="board" style="width: 400px;"></div>
 {% endif %}
 <script src="{{ url_for('static', filename='js/chessboard-1.0.0.min.js') }}"></script>
 <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.11.0/chess.js"></script>
@@ -29,6 +27,9 @@
     var user_id = '{{ user_id }}'; // Assume Flask template renders this
     var user_color = '{{ user_color }}'
     var waiting_for_player = {{ waiting_for_player | tojson }};
+    if (waiting_for_player) {
+        document.getElementById("board").style.display = "none";  // Optionally hide the board
+    }
     var config = {
         draggable: true,
         position: '{{ fen }}',

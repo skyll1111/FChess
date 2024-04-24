@@ -18,6 +18,9 @@
                     <li class="nav-item">
                         <a class="nav-link btn btn-outline-danger" href="{{ url_for('game') }}">New Game</a>
                     </li>
+                    <li class="nav-item">
+                        <a class="nav-link btn btn-outline-danger" href="{{ url_for('create_room') }}">Create room</a>
+                    </li>
                 {% else %}
                     <li class="nav-item">
                         <a class="nav-link btn btn-outline-success" href="{{ url_for('login') }}">Login</a>
@@ -29,84 +32,5 @@
             </ul>
         </div>
     </nav>
-    <!-- Modal for Creating a Game -->
-    <div class="modal fade" id="createGameModal" tabindex="-1" role="dialog" aria-labelledby="createGameModalLabel"
-         aria-hidden="true">
-        <div class="modal-dialog" role="document">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="createGameModalLabel">Create New Game</h5>
-                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                        <span aria-hidden="true">&times;</span>
-                    </button>
-                </div>
-                <div class="modal-body">
-                    <button onclick="createGame()" class="btn btn-primary">Create Game</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Modal for Joining a Game -->
-    <div class="modal fade" id="joinGameModal" tabindex="-1" role="dialog" aria-labelledby="joinGameModalLabel"
-         aria-hidden="true">
-        <div class="modal-dialog" role="document">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="joinGameModalLabel">Join a Game</h5>
-                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                        <span aria-hidden="true">&times;</span>
-                    </button>
-                </div>
-                <div class="modal-body">
-                    <input type="text" id="gameIdInput" class="form-control" placeholder="Enter Game ID">
-                    <button onclick="joinGame()" class="btn btn-primary mt-2">Join Game</button>
-                </div>
-            </div>
-        </div>
-    </div>
 </header>
-<script>
-function createGame() {
-    // AJAX call to the server to create a new game
-    fetch('/create_game', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ color: 'white' })  // Assuming you can choose the color or add other data
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.game_id) {
-            console.log("Game created successfully with ID:", data.game_id);
-            window.location.href = `/multiplayer/${data.game_id}`;  // Redirect to the game page
-        } else {
-            console.error("Failed to create game:", data.error);
-        }
-    })
-    .catch(error => console.error('Error creating game:', error));
-}
 
-function joinGame() {
-    var gameId = document.getElementById('gameIdInput').value;
-    // AJAX call to the server to join a game using the provided game ID
-    fetch(`/join_game`, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ game_id: gameId })
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.message) {
-            console.log("Joined game successfully:", data.message);
-            window.location.href = `/multiplayer/${gameId}`;  // Redirect to the game page
-        } else {
-            console.error("Failed to join game:", data.error);
-        }
-    })
-    .catch(error => console.error('Error joining game:', error));
-}
-</script>

@@ -1,9 +1,12 @@
 import os
 import secrets
 
+import chess.engine
 from flask import Flask, render_template, redirect, url_for, request, session, jsonify
 from flask_socketio import SocketIO, emit, join_room
 from flask_sqlalchemy import SQLAlchemy
+
+STOCKFISH_PATH = "C:/PYTHON/flaskProjectCHESS/stockfish_ex/stockfish-windows-x86-64-avx2.exe"
 
 app = Flask(__name__)
 socketio = SocketIO(app)
@@ -11,6 +14,31 @@ app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:////{os.path.abspath(os.getcwd(
 # app.config['SQLALCHEMY_ECHO'] = True
 app.secret_key = secrets.token_urlsafe(32)
 db = SQLAlchemy(app)
+
+
+def get_stockfish_analysis(fen, level, query_type):
+    engine = chess.engine.SimpleEngine.popen_uci(STOCKFISH_PATH)
+
+    engine.configure({"Skill Level": level})
+    engine.configure({"UCI_ShowWDL": "true"})
+
+    print(engine.options)
+
+    board = chess.Board(fen)
+    info = engine.analyse(board, chess.engine.Limit(time=2))  # Limit analysis time as needed
+    result = None
+    if query_type == "best_move":
+        result = str(info["pv"][0])
+    elif query_type == "eval":
+        result = str(info["score"])
+    elif query_type == "wdl":
+        if "wdl" in info:
+            result = {"wdl": info["wdl"].relative, "turn": "WHITE" if info["wdl"].turn else "BLACK"}
+        else:
+            result = "WDL not available"
+
+    engine.quit()
+    return result
 
 
 class user(db.Model):
@@ -217,7 +245,6 @@ def on_join(data):
             emit('waiting_for_player', {'waiting': True}, room=room)
 
 
-
 @socketio.on('move')
 def on_move(data):
     room = data['room']
@@ -230,6 +257,21 @@ def on_move(data):
         db.session.add(game_room)
     db.session.commit()
     emit('move', data, to=room, include_self=False)
+
+
+@app.route('/api/stockfish', methods=['POST'])
+def stockfish_api():
+    data = request.get_json()
+    fen = data.get("fen")
+    level = data.get("level")
+    query_type = data.get("query_type")
+
+    if not fen or not level or not query_type:
+        return jsonify({"error": "Missing required parameters"}), 400
+
+    result = get_stockfish_analysis(fen, level, query_type)
+    print(result)
+    return jsonify({query_type: result})
 
 
 if __name__ == "__main__":

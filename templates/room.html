@@ -20,6 +20,7 @@
     var game = new Chess('{{ fen }}');
     var room_id = '{{ room_id }}';
     var user_id = '{{ user_id }}'; // Assume Flask template renders this
+    var user_color = '{{ user_color }}'
 
     var config = {
         draggable: true,
@@ -27,10 +28,18 @@
         onDrop: handleMove,
         onSnapEnd: function () {
             board.position(game.fen());
-        }
+        },
+        onDragStart: onDragStart
     };
     board = Chessboard('board', config);
-
+    function onDragStart(source, piece, position, orientation) {
+        // Check if it's the right color's turn
+        if ((game.turn() === 'w' && piece.search(/^b/) !== -1) ||
+            (game.turn() === 'b' && piece.search(/^w/) !== -1) ||
+            game.turn() !== user_color.charAt(0)) {
+            return false;  // Cancel the drag if it's not this user's turn
+        }
+    }
     function handleMove(source, target, piece, newPos, oldPos, orientation) {
         var move = game.move({
             from: source,

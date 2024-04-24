@@ -190,9 +190,9 @@ def room(room_id):
         game_room.player_two_id = user_id
 
     db.session.commit()
-
+    player_color = "white" if str(user_id) in game_room.player_one_id else "black"
     fen = game_room.fen if game_room else 'start'
-    return render_template('room.html', room_id=room_id, fen=fen, user_id=user_id)
+    return render_template('room.html', room_id=room_id, fen=fen, user_id=user_id, user_color=player_color)
 
 
 @socketio.on('join')

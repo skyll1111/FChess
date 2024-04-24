@@ -5,6 +5,7 @@ import chess.engine
 from flask import Flask, render_template, redirect, url_for, request, session, jsonify
 from flask_socketio import SocketIO, emit, join_room
 from flask_sqlalchemy import SQLAlchemy
+from flask_cors import CORS
 
 STOCKFISH_PATH = "C:/PYTHON/flaskProjectCHESS/stockfish_ex/stockfish-windows-x86-64-avx2.exe"
 
@@ -16,7 +17,7 @@ app.config['SQLALCHEMY_DATABASE_URI'] = (f'sqlite:////'
 # app.config['SQLALCHEMY_ECHO'] = True
 app.secret_key = secrets.token_urlsafe(32)
 db = SQLAlchemy(app)
-
+CORS(app)
 
 def get_stockfish_analysis(fen, level, query_type):
     engine = chess.engine.SimpleEngine.popen_uci(STOCKFISH_PATH)

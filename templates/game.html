@@ -41,12 +41,29 @@
         <div id="pgn"></div>
         <div id="status"></div>
         <div id="pgn_data" style="display:none;">{{ pgn }}</div>
+
+        <div id="stockfish-controls">
+            <label for="stockfish-level">Уровень сложности Stockfish (0-20):</label>
+            <input type="number" id="stockfish-level" min="0" max="20" value="10">
+
+            <button onclick="getBestMove()">Получить лучший ход</button>
+            <button onclick="getEvaluation()">Получить оценку</button>
+            <button onclick="getWDL()">Получить WDL</button>
+        </div>
+
+        <div id="stockfish-results">
+            <p id="best-move-result"></p>
+            <p id="evaluation-result"></p>
+            <p id="wdl-result"></p>
+        </div>
     </div>
+
 </div>
 
 <script src="{{ url_for('static', filename='js/chessboard-1.0.0.min.js') }}"></script>
 <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.11.0/chess.js"></script>
 <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+<script src="{{ url_for('static', filename='js/stockfishcom.js') }}"></script>
 <script src="https://cdn.socket.io/4.0.0/socket.io.min.js"></script>
 
 </body>

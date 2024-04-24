@@ -10,7 +10,7 @@ from flask_sqlalchemy import SQLAlchemy
 app = Flask(__name__)
 socketio = SocketIO(app)
 app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:////{os.path.abspath(os.getcwd()).replace("\\", "/")[3:]}/database.db'
-app.config['SQLALCHEMY_ECHO'] = True
+# app.config['SQLALCHEMY_ECHO'] = True
 app.secret_key = secrets.token_urlsafe(32)
 db = SQLAlchemy(app)
 
@@ -27,7 +27,13 @@ class chess_games(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
     pgn = db.Column(db.String)  # Store the PGN data of the game
+class GameRoom(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    room_id = db.Column(db.String(80), unique=True, nullable=False)
+    fen = db.Column(db.String(255), nullable=False)
 
+    def __repr__(self):
+        return '<GameRoom %r>' % self.room_id
 @app.route("/game")
 def game():
     # Clear game_id from session to ensure a new game is created
@@ -144,8 +150,11 @@ def create_room():
 
 @app.route('/room/<room_id>')
 def room(room_id):
-    # Render a template for the room
-    return render_template('room.html', room_id=room_id)
+    game_room = GameRoom.query.filter_by(room_id=room_id).first()
+    fen = game_room.fen if game_room else 'start'
+    print(fen)
+    return render_template('room.html', room_id=room_id, fen=fen)
+
 @socketio.on('join')
 def on_join(data):
     print(data)
@@ -155,7 +164,17 @@ def on_join(data):
 
 @socketio.on('move')
 def on_move(data):
-    emit('move', data, to=data['room'], include_self=False)
+    room = data['room']
+    fen = data['fen']  # Make sure to send this from client
+    game_room = GameRoom.query.filter_by(room_id=room).first()
+    if game_room:
+        game_room.fen = fen
+    else:
+        game_room = GameRoom(room_id=room, fen=fen)
+        db.session.add(game_room)
+    db.session.commit()
+    emit('move', data, to=room, include_self=False)
+
 
 
 if __name__ == "__main__":

@@ -10,37 +10,40 @@
 
 </head>
 <body>
+{% include 'header.html' %}
 <div id="board" style="width: 400px;"></div>
 <script src="{{ url_for('static', filename='js/chessboard-1.0.0.min.js') }}"></script>
 <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.11.0/chess.js"></script>
 <script>
     var socket = io();
     var board = null;
-    var game = new Chess();
+    var game = new Chess("{{ fen }}");
     var room_id = "{{ room_id }}";
 
     // Configure the chessboard
     var config = {
         draggable: true,
-        dropOffBoard: 'snapback',
+        position: game.fen(),  // Use FEN from server
         onDrop: handleMove,
-        position: "start"
-    };
+        onSnapEnd: function () {
+            board.position(game.fen());
+        }
+    }
     board = Chessboard('board', config);
 
     // Handle move validation and emit move to server
-    function handleMove(source, target, piece, newPos, oldPos, orientation) {
+     function handleMove(source, target, piece, newPos, oldPos, orientation) {
         var move = game.move({
             from: source,
             to: target,
             promotion: 'q'
         });
         if (move === null) return 'snapback';
-        socket.emit('move', {move: move, room: room_id});
+        socket.emit('move', {move: move, room: room_id, fen: game.fen()});
     }
 
     // Listen for moves made by the opponent
-    socket.on('move', function (data) {
+    socket.on('move', function(data) {
         game.move(data.move);
         board.position(game.fen());
     });

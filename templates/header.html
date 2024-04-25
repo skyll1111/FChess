@@ -22,7 +22,7 @@
                         <a class="nav-link btn btn-outline-danger" href="{{ url_for('create_room') }}">Create Room</a>
                     </li>
                     <li class="nav-item">
-                        <form action="{{ url_for('join_room') }}" method="post">
+                        <form action="{{ url_for('join_room_by_id') }}" method="post">
                             <input type="text" name="room_id" placeholder="Enter Room ID" class="form-control">
                             <button type="submit" class="btn btn-primary">Join Room</button>
                         </form>

@@ -17,6 +17,11 @@
         Waiting for another player to join...
     </div>
 {% endif %}
+<div id="chat-container">
+    <div id="messages"></div>
+    <input type="text" id="chat-message" placeholder="Type a message...">
+    <button onclick="sendMessage()">Send</button>
+</div>
 <script src="{{ url_for('static', filename='js/chessboard-1.0.0.min.js') }}"></script>
 <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.11.0/chess.js"></script>
 <script>
@@ -72,12 +77,64 @@
     });
 
     socket.on('waiting_for_player', function (data) {
+        console.log("joined")
         if (data.waiting) {
             document.getElementById("waiting-message").style.display = "block";
         }
     });
 
     socket.emit('join', {room: room_id, user_id: user_id});
+
+    function loadMessages() {
+        fetch('/get_messages/' + room_id)
+            .then(response => response.json())
+            .then(data => {
+                const messagesElement = document.getElementById('messages');
+                messagesElement.innerHTML = '';  // Clear previous messages
+                data.forEach(msg => {
+                    const msgElement = document.createElement('div');
+                    msgElement.innerText = msg.user_id + ": " + msg.message;
+                    messagesElement.appendChild(msgElement);
+                });
+            });
+    }
+
+    function sendMessage() {
+        const messageInput = document.getElementById('chat-message');
+        const message = messageInput.value;
+        messageInput.value = '';  // Clear the input after sending
+        fetch('/post_message', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                room_id: room_id,
+                user_id: user_id,
+                message: message
+            })
+        }).then(response => response.json())
+            .then(data => {
+                console.log('Message sent', data);
+                socket.emit('new_message', {room_id: room_id, message: message, user_id: user_id});  // Emit the new message to the room
+            });
+    }
+
+    socket.on('new_message', function (data) {
+        if (data.room_id === room_id) {  // Ensure the message is for the correct room
+            const messagesElement = document.getElementById('messages');
+            const msgElement = document.createElement('div');
+            msgElement.innerText = data.user_id + ": " + data.message;
+            messagesElement.appendChild(msgElement);
+        }
+    });
+
+    document.addEventListener('DOMContentLoaded', function () {
+        loadMessages();  // Load messages when the page loads
+    });
+
+    // Add necessary event listeners and handlers to interact with the backend
+
 </script>
 
 </body>

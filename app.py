@@ -1,3 +1,4 @@
+import datetime
 import os
 import secrets
 
@@ -10,7 +11,7 @@ from flask_sqlalchemy import SQLAlchemy
 STOCKFISH_PATH = "C:/PYTHON/flaskProjectCHESS/stockfish_ex/stockfish-windows-x86-64-avx2.exe"
 
 app = Flask(__name__)
-socketio = SocketIO(app)
+socketio = SocketIO(app, cors_allowed_origins="*")
 app.config['SQLALCHEMY_DATABASE_URI'] = (f'sqlite:////'
                                          f'{os.path.abspath(os.getcwd()).replace("\\", "/")[3:]}/'
                                          f'database.db')
@@ -68,6 +69,17 @@ class GameRoom(db.Model):
 
     def __repr__(self):
         return '<GameRoom %r>' % self.room_id
+
+
+class ChatMessage(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    room_id = db.Column(db.String(120), nullable=False)
+    user_id = db.Column(db.String(120), nullable=False)
+    message = db.Column(db.Text, nullable=False)
+    timestamp = db.Column(db.DateTime, default=datetime.datetime.now(datetime.UTC))
+
+    def __repr__(self):
+        return f"<ChatMessage {self.room_id} {self.user_id} {self.message}>"
 
 
 @app.route("/game")
@@ -233,9 +245,11 @@ def room(room_id):
 
 @socketio.on('join')
 def on_join(data):
+    print(data)
     room = data['room']
     user_id = data['user_id']
     join_room(room)
+    emit('joined_room', {'room_id': room}, room=room)
     game_room = GameRoom.query.filter_by(room_id=room).first()
 
     if game_room.player_one_id and game_room.player_two_id:
@@ -278,8 +292,8 @@ def stockfish_api():
     return jsonify({query_type: result})
 
 
-@app.route('/join_room', methods=['POST'])
-def join_room():
+@app.route('/join_room_by_id', methods=['POST'])
+def join_room_by_id():
     room_id = request.form.get('room_id')
     if not room_id:
         flash('No room ID provided!', 'error')
@@ -298,6 +312,30 @@ def online_games():
     # Получаем все игры, где пользователь участвует
     games = GameRoom.query.filter((GameRoom.player_one_id == user_id) | (GameRoom.player_two_id == user_id)).all()
     return render_template('online_games.html', games=games)
+
+
+@app.route('/get_messages/<room_id>')
+def get_messages(room_id):
+    messages = ChatMessage.query.filter_by(room_id=room_id).all()
+    return jsonify(
+        [{'user_id': msg.user_id, 'message': msg.message, 'timestamp': msg.timestamp.isoformat()} for msg in messages])
+
+
+@app.route('/post_message', methods=['POST'])
+def post_message():
+    data = request.get_json()
+    new_message = ChatMessage(room_id=data['room_id'], user_id=data['user_id'], message=data['message'])
+    db.session.add(new_message)
+    db.session.commit()
+
+    # Emit using the socketio instance directly
+    socketio.emit('new_message', {
+        'user_id': data['user_id'],
+        'message': data['message'],
+        'room_id': data['room_id']
+    }, room=data['room_id'])
+
+    return jsonify({'status': 'success'})
 
 
 if __name__ == "__main__":

@@ -1,90 +1,22 @@
-import datetime
-import os
-import secrets
+import uuid
 
-import chess.engine
-from flask import Flask, render_template, redirect, url_for, request, session, jsonify, flash
+from flask import Flask, render_template, redirect, url_for, request, session, jsonify, flash, Response
 from flask_cors import CORS
 from flask_socketio import SocketIO, emit, join_room
-from flask_sqlalchemy import SQLAlchemy
 
-STOCKFISH_PATH = "C:/PYTHON/flaskProjectCHESS/stockfish_ex/stockfish-windows-x86-64-avx2.exe"
+from config import AppConfig
+from models import db, User, chess_games, GameRoom, ChatMessage
+from utils import analyze_game, get_stockfish_analysis, generate_board_svg
 
 app = Flask(__name__)
+app.config.from_object(AppConfig)
 socketio = SocketIO(app, cors_allowed_origins="*")
-app.config['SQLALCHEMY_DATABASE_URI'] = (f'sqlite:////'
-                                         f'{os.path.abspath(os.getcwd()).replace("\\", "/")[3:]}/'
-                                         f'database.db')
-# app.config['SQLALCHEMY_ECHO'] = True
-app.secret_key = secrets.token_urlsafe(32)
-db = SQLAlchemy(app)
+db.init_app(app)
 CORS(app)
-
-
-def get_stockfish_analysis(fen, level, query_type):
-    engine = chess.engine.SimpleEngine.popen_uci(STOCKFISH_PATH)
-
-    engine.configure({"Skill Level": level})
-    engine.configure({"UCI_ShowWDL": "true"})
-
-    print(engine.options)
-
-    board = chess.Board(fen)
-    info = engine.analyse(board, chess.engine.Limit(time=2))  # Limit analysis time as needed
-    result = None
-    if query_type == "best_move":
-        result = str(info["pv"][0])
-    elif query_type == "eval":
-        result = str(info["score"])
-    elif query_type == "wdl":
-        if "wdl" in info:
-            result = {"wdl": info["wdl"].relative, "turn": "WHITE" if info["wdl"].turn else "BLACK"}
-        else:
-            result = "WDL not available"
-
-    engine.quit()
-    return result
-
-
-class user(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    username = db.Column(db.String(80))
-    email = db.Column(db.String(120))
-    password = db.Column(db.String(80))
-
-
-class chess_games(db.Model):
-    __tablename__ = 'chess_games'
-    id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
-    pgn = db.Column(db.String)  # Store the PGN data of the game
-
-
-class GameRoom(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    room_id = db.Column(db.String(80), unique=True, nullable=False)
-    fen = db.Column(db.String(255), nullable=False)
-    player_one_id = db.Column(db.String(80), nullable=True)
-    player_two_id = db.Column(db.String(80), nullable=True)
-
-    def __repr__(self):
-        return '<GameRoom %r>' % self.room_id
-
-
-class ChatMessage(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    room_id = db.Column(db.String(120), nullable=False)
-    user_id = db.Column(db.String(120), nullable=False)
-    message = db.Column(db.Text, nullable=False)
-    timestamp = db.Column(db.DateTime, default=datetime.datetime.now(datetime.UTC))
-
-    def __repr__(self):
-        return f"<ChatMessage {self.room_id} {self.user_id} {self.message}>"
 
 
 @app.route("/game")
 def game():
-    # Clear game_id from session to ensure a new game is created
     session.pop('game_id', None)
 
     if 'logged_in' in session:
@@ -94,7 +26,7 @@ def game():
         session['game_id'] = new_game.id
         return render_template("game.html")
     else:
-        return redirect(url_for("login"))  # Redirect to login if not logged in
+        return redirect(url_for("login"))
 
 
 @app.route("/")
@@ -107,16 +39,14 @@ def login():
     if request.method == "POST":
         uname = request.form["uname"]
         passw = request.form["passw"]
-        remember_me = request.form.get("remember_me")  # Get checkbox value
+        remember_me = request.form.get("remember_me")
 
-        login = user.query.filter_by(username=uname, password=passw).first()
+        login = User.query.filter_by(username=uname, password=passw).first()
         if login is not None:
             session['logged_in'] = True
             session['username'] = uname
             session['user_id'] = login.id
-            # Handle "Remember Me" (not implemented for security reasons)
-            # ...
-            return redirect(url_for("profile"))  # Redirect to profile
+            return redirect(url_for("profile"))
     return render_template("login.html")
 
 
@@ -127,7 +57,7 @@ def register():
         mail = request.form['mail']
         passw = request.form['passw']
 
-        register = user(username=uname, email=mail, password=passw)
+        register = User(username=uname, email=mail, password=passw)
         db.session.add(register)
         db.session.commit()
 
@@ -182,32 +112,25 @@ def load_game(game_id):
         user_id = session.get('user_id')
         game = chess_games.query.filter_by(id=game_id, user_id=user_id).first_or_404()
 
-        # Update session's game_id to reflect the loaded game
         session['game_id'] = game_id
 
-        print(game.pgn)
         return render_template('game.html', pgn=game.pgn)
     else:
         return redirect(url_for('login'))
 
 
-import uuid
-
-
 @app.route('/create_room', methods=['GET'])
 def create_room():
-    user_id = session.get('user_id')  # Ensure you have user authentication set up
+    user_id = session.get('user_id')
     if not user_id:
-        return redirect(url_for('login'))  # Redirect to login if not authenticated
+        return redirect(url_for('login'))
 
-    # Generate a unique room ID
     room_id = str(uuid.uuid4())
     new_room = GameRoom(room_id=room_id, fen='rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1',
                         player_one_id=user_id)
 
     db.session.add(new_room)
     db.session.commit()
-    # Redirect user to the new room
     return redirect(url_for('room', room_id=room_id))
 
 
@@ -217,17 +140,14 @@ def room(room_id):
     game_room = GameRoom.query.filter_by(room_id=room_id).first()
 
     if not game_room:
-        return redirect(url_for('index'))  # Redirect if room does not exist
+        return redirect(url_for('index'))
 
-    # Check if the room is already full and if the user is one of the participants
     if (game_room.player_one_id and game_room.player_two_id and
             str(user_id) not in [game_room.player_one_id, game_room.player_two_id]):
-        print("empty&?????")
-        return redirect(url_for('index'))  # Room is full and user is not a participant
+        return redirect(url_for('index'))
 
-    print(user_id, [game_room.player_one_id, game_room.player_two_id])
     if str(user_id) in [game_room.player_one_id, game_room.player_two_id]:
-        print("HUUUUUH")
+        print("user allowed")
     elif not game_room.player_one_id:
         game_room.player_one_id = user_id
     elif not game_room.player_two_id and user_id != game_room.player_one_id:
@@ -245,7 +165,6 @@ def room(room_id):
 
 @socketio.on('join')
 def on_join(data):
-    print(data)
     room = data['room']
     user_id = data['user_id']
     join_room(room)
@@ -266,7 +185,7 @@ def on_join(data):
 @socketio.on('move')
 def on_move(data):
     room = data['room']
-    fen = data['fen']  # Make sure to send this from client
+    fen = data['fen']
     game_room = GameRoom.query.filter_by(room_id=room).first()
     if game_room:
         game_room.fen = fen
@@ -288,7 +207,6 @@ def stockfish_api():
         return jsonify({"error": "Missing required parameters"}), 400
 
     result = get_stockfish_analysis(fen, level, query_type)
-    print(result)
     return jsonify({query_type: result})
 
 
@@ -299,17 +217,15 @@ def join_room_by_id():
         flash('No room ID provided!', 'error')
         return redirect(url_for('index'))
 
-    # Here you would typically check if the room exists and if the user can join
-    return redirect(url_for('room', room_id=room_id))  # Assume you have a view function to show the room
+    return redirect(url_for('room', room_id=room_id))
 
 
 @app.route('/online_games')
 def online_games():
     user_id = session.get('user_id')
     if not user_id:
-        return redirect(url_for('login'))  # Перенаправить на страницу входа, если пользователь не авторизован
+        return redirect(url_for('login'))
 
-    # Получаем все игры, где пользователь участвует
     games = GameRoom.query.filter((GameRoom.player_one_id == user_id) | (GameRoom.player_two_id == user_id)).all()
     return render_template('online_games.html', games=games)
 
@@ -328,7 +244,6 @@ def post_message():
     db.session.add(new_message)
     db.session.commit()
 
-    # Emit using the socketio instance directly
     socketio.emit('new_message', {
         'user_id': data['user_id'],
         'message': data['message'],
@@ -336,6 +251,30 @@ def post_message():
     }, room=data['room_id'])
 
     return jsonify({'status': 'success'})
+
+
+@app.route('/api/board_svg', methods=['POST'])
+def board_svg():
+    data = request.get_json()
+    fen = data.get("fen")
+    if not fen:
+        return jsonify({"error": "Missing FEN parameter"}), 400
+
+    svg = generate_board_svg(fen)
+    return Response(svg, mimetype='image/svg+xml')
+
+
+@app.route('/api/review_game', methods=['POST'])
+def review_game():
+    data = request.get_json()
+    pgn = data.get('pgn')
+    depth = int(data.get('depth', 20))
+
+    if not pgn:
+        return jsonify({'error': 'No PGN provided'}), 400
+
+    analysis = analyze_game(pgn, depth)
+    return jsonify(analysis)
 
 
 if __name__ == "__main__":

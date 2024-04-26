@@ -46,7 +46,7 @@ def get_stockfish_analysis(fen, level, query_type):
     engine.configure({"UCI_ShowWDL": "true"})
 
     board = chess.Board(fen)
-    info = engine.analyse(board, chess.engine.Limit(time=2))
+    info = engine.analyse(board, chess.engine.Limit(depth=20))
     result = None
     if query_type == "best_move":
         result = str(info["pv"][0])
